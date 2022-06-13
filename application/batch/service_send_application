@@ -1,0 +1,255 @@
+#!/bin/sh
+# 
+# chkconfig: 2345 95 55
+# description: Asterisk PBX and telephony daemon.
+
+# ############################################################
+# -- getting bascript acess ---
+# ############################################################
+
+BASE_LOOP_INTERVAL=2
+
+# ############################################################
+# -- getting bascript acess ---
+# ############################################################
+
+BASE_HOME_DIR="hsbctele3.1.3.r2"
+BASE_PATH_BATCH_EXECUTE="/opt/enigma/webapps/${BASE_HOME_DIR}/application/batch"
+BASE_PATH_BATCH_FILE="service_send_application"
+BASE_PATH_BATCH_RUNNER="${BASE_PATH_BATCH_EXECUTE}/${BASE_PATH_BATCH_FILE} EventSenderApplication"
+echo $BASE_PATH_BATCH_RUNNER;
+
+# ############################################################
+# php -q /opt/enigma/webapps/hsbctele3.1.3.r2/index.php MailMonitoring EventSenderApplication
+# ############################################################
+
+BASE_PATH_APPLICATION="/opt/enigma/webapps/${BASE_HOME_DIR}"
+BASE_PATH_BATCH_REFER="application/batch"
+BASE_PATH_SHELL_EXECUTE="MailMonitoring EventSenderApplication"
+BASE_PATH_SHELL_PHP_INDEX="index.php"
+BASE_PATH_SHELL_RUNNER="${BASE_PATH_APPLICATION}/${BASE_PATH_SHELL_PHP_INDEX} ${BASE_PATH_SHELL_EXECUTE}"
+
+# ############################################################
+# PID
+# ############################################################
+
+BASE_PATH_DATE=`date +%Y%m%d`
+BASE_PATH_BATCH_PID="${BASE_PATH_BATCH_FILE}.pid"
+BASE_PATH_BATCH_LOG="${BASE_PATH_BATCH_FILE}-${BASE_PATH_DATE}.log"
+
+BASE_PATH_BATCH_PATH_PID="${BASE_PATH_APPLICATION}/${BASE_PATH_BATCH_REFER}/${BASE_PATH_BATCH_PID}"
+BASE_PATH_BATCH_PATH_LOG="${BASE_PATH_APPLICATION}/${BASE_PATH_BATCH_REFER}/${BASE_PATH_BATCH_LOG}"
+BASE_PATH_BATCH_SELF="${BASE_PATH_APPLICATION}/${BASE_PATH_BATCH_REFER}/${BASE_PATH_BATCH_FILE}"
+
+#-- step1 --
+
+if [ -f $BASE_PATH_BATCH_SELF ]; then
+	chmod -R 0777 ${BASE_PATH_BATCH_SELF}
+fi
+
+#-- step2 --
+
+if [ -f $BASE_PATH_BATCH_PATH_PID ]; then
+	chmod -R 0777 ${BASE_PATH_BATCH_PATH_PID}
+fi
+
+#-- step3 --
+
+if [ -f $BASE_PATH_BATCH_PATH_LOG ]; then
+	chmod -R 0777 ${BASE_PATH_BATCH_PATH_LOG}
+fi
+
+# -- define parameter on here .. # 
+PID= 
+ALIVE_SERVICE=
+ALIVE_PROCESS=
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+
+#################################################################
+# ------------ proc_alive_service -----------------
+#################################################################
+
+ proc_alive_service() 
+{
+
+  ALIVE_SERVICE=
+  if [ -f $BASE_PATH_BATCH_PATH_PID ]; 
+	then
+		PID="$(cat ${BASE_PATH_BATCH_PATH_PID})"
+		if ps -p $PID > /dev/null
+		then
+		  ALIVE_SERVICE=1
+		fi
+	else
+		ALIVE_SERVICE=
+	fi
+	
+  return 	
+}
+
+#################################################################
+# ------------ proc_alive_process -----------------
+#################################################################
+
+ proc_alive_process() 
+{
+  ALIVE_PROCESS=
+  for psnum in `ps -ef | grep -v grep | grep $1 | awk '{print $2}'`; do
+        if kill -0 $psnum > /dev/null 2>&1 ; then
+            ALIVE_PROCESS=1
+        fi
+        done
+  return
+}
+
+#################################################################
+# ------------ EventSenderApplication -----------------
+#################################################################
+
+ EventSenderApplication() 
+{
+	while :; do
+		BASE_RUN_DATE=`date +%Y-%m-%d`
+		BASE_RUN_TIME=`date +%T`
+		
+		ALIVE_PROCESS=
+		proc_alive_process "php -q ${BASE_PATH_SHELL_RUNNER}"
+		if [ $ALIVE_PROCESS ];
+		then
+			echo ""
+			#echo "${BASE_RUN_DATE} ${BASE_RUN_TIME} wait --- EventSenderApplication --- process still running.." >> ${BASE_PATH_BATCH_PATH_LOG}
+		else
+			#echo "${BASE_RUN_DATE} ${BASE_RUN_TIME} start --- EventSenderApplication --- argc: php -q ${BASE_PATH_SHELL_RUNNER}" >> ${BASE_PATH_BATCH_PATH_LOG}
+			php -q $BASE_PATH_SHELL_RUNNER
+		fi
+		
+		sleep $BASE_LOOP_INTERVAL
+	done
+}
+
+#################################################################
+# ------------ stop sender -----------------
+#################################################################
+
+start()
+{
+	echo -n $"start appication service status "
+	proc_alive_service 
+	
+	if [ $ALIVE_SERVICE ];
+	then
+		failure
+		echo
+        echo "ERROR>> stop appication service, please stop it first"
+        return
+	fi
+	
+	$BASE_PATH_BATCH_RUNNER -l${BASE_LOOP_INTERVAL} 1> /dev/null 2> /dev/null & 
+	
+	sleep 4
+	if [ -f $BASE_PATH_BATCH_PATH_PID ]; 
+	then
+		PID="$(cat ${BASE_PATH_BATCH_PATH_PID})"
+		echo -n $"PID : ${PID}" 
+	fi
+	
+	ALIVE_SERVICE=1
+    success
+    echo ""
+    return $ALIVE_SERVICE
+		
+}
+
+#################################################################
+# ------------ stop sender -----------------
+#################################################################
+
+ status()
+{
+	PID=
+	if [ -f $BASE_PATH_BATCH_PATH_PID ]; 
+	then
+		PID="$(cat ${BASE_PATH_BATCH_PATH_PID})"
+		echo
+        echo "STATUS >> sender appication service, already running PID : ${PID} ..."
+        return
+	else
+		echo
+		echo "STATUS >>sender appication service, stop,.."
+	fi
+	
+}
+#################################################################
+# ------------ stop sender -----------------
+#################################################################
+
+stop()
+{
+	PID=
+	if [ -f $BASE_PATH_BATCH_PATH_PID ]; 
+	then
+		echo -n $"stop sender appication service status:"
+		PID="$(cat ${BASE_PATH_BATCH_PATH_PID})"
+		if ! kill $PID > /dev/null 2>&1; then
+			echo "Could not send SIGTERM to process $PID" >&2
+		fi
+		rm -f ${BASE_PATH_BATCH_PATH_PID}
+		
+		ALIVE_PROCESS=
+		proc_alive_process "php -q ${BASE_PATH_SHELL_RUNNER}"
+		if [ $ALIVE_PROCESS ];
+		then
+			killall "php -q ${BASE_PATH_SHELL_RUNNER}"
+			ALIVE_PROCESS=
+		fi
+		
+		sleep 1
+		success
+		echo
+	else
+		echo -n $"stop sender appication service status:"
+		failure
+		echo
+	fi	
+}
+
+#################################################################
+# ------------ restart sender -----------------
+#################################################################
+restart()
+{
+	stop
+	echo "sender appication service to up, please wait ..."
+	sleep 5
+    start
+}
+
+#################################################################
+#################################################################
+
+case "$1" in
+  start)
+    start
+   ;;
+   EventSenderApplication)
+   EventSenderApplication & echo $! >> ${BASE_PATH_BATCH_PATH_PID}
+   ;;
+   restart)
+   restart
+   ;;
+   status)
+   status
+   ;;
+  stop)
+    stop
+   ;;
+   *)
+        echo "Input Argument : {start|stop|restart|status}"
+        exit 1
+esac
+exit $?
+
+# vi: set ts=2 sw=2 :

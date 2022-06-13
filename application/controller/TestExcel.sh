@@ -1,0 +1,1 @@
+curl 'http://192.168.17.12/bnitele/index.php/TestExcel2';

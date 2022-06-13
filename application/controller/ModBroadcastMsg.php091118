@@ -1,0 +1,345 @@
+<?php
+class ModBroadcastMsg extends EUI_Controller
+{
+
+ 
+// -----------------------------------------------------------------------------------------------
+/* 
+ * Method 		Role 
+ *
+ * @pack 		metjode 
+ * @param		testing all 
+ * @notes		must be exist if have button attribute role
+ */
+  function __construct() 
+ {
+	parent::__construct();
+	$this->load->model(base_class_model($this));
+	$this->load->helper(array('EUI_Object'));
+ }
+ 
+// -----------------------------------------------------------------------------------------------
+/* 
+ * Method 		Role 
+ *
+ * @pack 		metjode 
+ * @param		testing all 
+ * @notes		must be exist if have button attribute role
+ */
+
+ function index()
+{
+	
+ if(_have_get_session('UserId'))
+ {
+//	$this -> M_ModBroadcastMsg -> _getAllUser();
+	$arr_button = $this->M_UserRole->_select_role_form_action(get_class($this));
+	$this->load-> view('mod_broadcast/view_broadcast_message', array(
+		'button' => Objective( $arr_button )
+	));	
+ }
+ 
+}
+ 
+// -----------------------------------------------------------------------------------------------
+/* 
+ * Method 		Role 
+ *
+ * @pack 		metjode 
+ * @param		testing all 
+ * @notes		must be exist if have button attribute role
+ */
+
+ 
+ function EventUserActive()
+{
+  
+  
+  $start_page = 0;
+  $per_page   = DEFAULT_COUNT_PAGE;
+  
+ // ---------- customize page data ------------------------ 
+    
+  
+ // ------------- then result data ---------------------------------
+ 
+  $post_page  = (int)_get_post('page');
+  $obj_class =& get_class_instance(base_class_model($this));
+  $arr_result = array();
+  $arr_content = $obj_class->_select_row_user_active( new EUI_Object( _get_all_request() ));
+  $tot_result = count($arr_content);
+	
+  if( _get_have_post('ShowPager') 
+	  and _get_have_post('ShowPager') == 1 )
+ {
+	$per_page = count($arr_content);
+  }	 	
+  
+  if( $post_page) {
+	$start_page = (($post_page-1)*$per_page);
+  } else {	
+	$start_page = 0;
+  }
+
+ // @ pack : set result on array
+  if( (is_array($arr_result)) 
+	AND ( $tot_result > 0 ) )
+ {
+	$arr_result = array_slice($arr_content, $start_page, $per_page);
+}	
+ 
+ if( $per_page ){
+	$page_counter = ceil($tot_result/ $per_page);
+ } else {
+	 $page_counter = 0;
+ }
+ // @ pack : then set it to view 
+ 
+ $arr_page_address = array
+(
+	'content_pages' => $arr_result,
+	'total_records' => $tot_result,
+	'total_pages'   => $page_counter,
+	'select_pages'  => $post_page,
+	'start_page' 	=> $start_page
+ );
+ 
+ $this->load->view("mod_broadcast/view_broadcast_users", $arr_page_address);	
+ 
+	// if( $this -> EUI_Session -> _have_get_session('UserId'))
+	// {
+		// if( class_exists('M_ModBroadcastMsg') )
+		// {
+			// $Users = array('Users' => $this -> M_ModBroadcastMsg -> _getAllUser() );
+			// $this -> load -> view( 'mod_broadcast/view_broadcast_users', $Users );
+		// }	
+	// }	
+ }
+ 
+ 
+/*
+ * @ def	: function get detail content list page 
+ * -----------------------------------------------------
+ *
+ * @ return : array()
+ * @ param	: not assign parameter
+ */	
+function SendUserOnline()
+ {
+	$_conds = array('success'=> 0); $Online = array();
+	
+	if( $this -> EUI_Session -> _have_get_session('UserId'))
+	{
+		if( class_exists('M_ModBroadcastMsg') )
+		{
+			$data = null; $TextMessage = $this -> URI ->_get_post('TextMessage');
+			
+			if( $this -> URI -> _get_have_post('UserData') ) 
+			{
+				$Online = array_keys($this -> M_ModBroadcastMsg ->_getUserOnline());
+				foreach( $this -> URI -> _get_array_post('UserData') as $k => $v )
+				{
+					if( in_array($v, $Online)){
+						$data[$k] = $v; 
+					}
+				}
+			}
+			
+			// process &&&
+			
+			if(!is_null($data))
+			{
+				if( $this -> M_ModBroadcastMsg -> _setSendUserOnline(
+					array
+					(
+						'Users' => $data,
+						'Message' => $TextMessage
+					)
+				))
+				{
+					$_conds = array('success'=> 1);
+				}
+			}
+		}
+	}
+	
+	echo json_encode($_conds);
+		
+ }
+ 
+/*
+ * @ def	: function get detail content list page
+ * ---------------------------------------------------
+ * 
+ * @ return : array()
+ * @ param	: not assign parameter
+ */	
+ 
+ function SendUserOffline()
+ {
+	$_conds = array('success'=> 0); $Offline = array();
+	
+	if( $this -> EUI_Session -> _have_get_session('UserId'))
+	{
+		if( class_exists('M_ModBroadcastMsg') )
+		{
+			$data = null; $TextMessage = $this -> URI ->_get_post('TextMessage');
+			
+			if( $this -> URI -> _get_have_post('UserData') ) 
+			{
+				$Offline = array_keys($this -> M_ModBroadcastMsg ->_getUserOffline());
+				foreach( $this -> URI -> _get_array_post('UserData') as $k => $v )
+				{
+					if( in_array($v, $Offline)){
+						$data[$k] = $v; 
+					}
+				}
+			}
+			
+			// process &&&
+			
+			if(!is_null($data))
+			{
+				if( $this -> M_ModBroadcastMsg -> _setSendUserOffline(
+					array
+					(
+						'Users' => $data,
+						'Message' => $TextMessage
+					)
+				))
+				{
+					$_conds = array('success'=> 1);
+				}
+			}
+		}
+	}
+	
+	echo json_encode($_conds);
+		
+ }
+ 
+/*
+ * @ def	: SendUserAll
+ * ---------------------------------------------------
+ * 
+ * @ return : array()
+ * @ param	: not assign parameter
+ */	
+ 
+ function SentBroadcastMessage()
+{
+ $cond = array('success' => 0);
+ $out = _find_all_object_request();
+ 
+  if( !$out->fetch_ready() )
+ {
+	echo json_encode( $cond );
+	return false;
+ }
+ 
+ 
+ $arr_push = &get_class_instance('M_ModBroadcastMsg')->_set_row_sent_broadcast_message( $out );
+ if( $arr_push )
+ {
+	$cond = array('success' => 1); 
+ }
+ 
+ echo json_encode( $cond );
+ 
+ }
+ 
+ /*
+ * @ def	: function get detail content list page
+ * ---------------------------------------------------
+ * 
+ * @ return : array()
+ * @ param	: not assign parameter
+ */	
+ 
+ function PoolMessage()
+ {
+	$pesan = array();
+	$pesan['pesan'] = array('result'=>0);
+	if( !$this -> EUI_Session -> _have_get_session('UserId') ){
+		echo json_encode($pesan);	
+		exit(0);
+	} 
+	
+	// echo json_encode($pesan);	
+	// exit(0);
+	
+	
+	$datas= array();
+		$sql = " select a.id as MsgId,  b.full_name as Username, a.message ,date_format(a.sent,'%d-%m-%Y %H:%i') as datetime
+				 from tms_agent_msgbox a 
+				 left join tms_agent b on a.`from`=b.UserId
+				 where a.`to`='".$this -> EUI_Session ->_get_session('UserId')."' and recd=0
+				 ORDER BY date_format(a.sent,'%Y-%m-%d %H:%i:%s') DESC";
+		
+		$qry = $this -> db->query($sql);
+		if( $qry -> result_num_rows() > 0 )
+		{
+			$i =0;
+			foreach( $qry -> result_assoc() as $rows )
+			{
+				$datas['result'] = 1;
+				$datas[$i]['msgid']	   = $rows['MsgId'];
+				$datas[$i]['from']	   = $rows['Username'];
+				$datas[$i]['message']  = $rows['message'];
+				$datas[$i]['datetime'] = $rows['datetime'];
+				$i++;
+			}
+		} 
+		$total = $qry -> result_num_rows();
+		if( $total > 0 ){
+			$pesan['pesan'] = $datas;
+		}
+		else{
+			$pesan['pesan'] = array('result'=>0);
+		}	
+		
+		echo json_encode($pesan);	
+ }
+ 
+ 
+/*
+ * @ def	: UpdateAll
+ * ---------------------------------------------------
+ * 
+ * @ return : array()
+ * @ param	: not assign parameter
+ */	
+ 
+ function UpdateAll()
+ {
+	echo json_encode
+	(
+		$this -> {base_class_model($this)}->_setUpdateAll
+		(
+			$this -> EUI_Session -> _get_session('UserId')
+		)
+	);
+ }
+ 
+/*
+ * @ def	: UpdateMessage
+ * ---------------------------------------------------
+ * 
+ * @ return : array()
+ * @ param	: not assign parameter
+ */	
+ 
+function UpdateMessage()
+{
+	echo json_encode
+	(
+		$this -> {base_class_model($this)}->_setUpdateMessage
+		(
+			$this->URI->_get_post('messageid')
+		)
+	);
+} 
+ 
+ 
+}
+?>

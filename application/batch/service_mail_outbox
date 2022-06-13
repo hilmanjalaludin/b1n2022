@@ -1,0 +1,174 @@
+#!/bin/sh
+# 
+# chkconfig: 2345 95 55
+# description: Asterisk PBX and telephony daemon.
+
+mail_spool_path=/opt/enigma/webapps/hsbctele3.1.3.r2
+
+# php -q /opt/enigma/webapps/hsbctele3.1.3.r2/index.php MailMonitoring EventInboxListener
+# php -q /opt/enigma/webapps/hsbctele3.1.3.r2/index.php MailMonitoring EventOutboxListener
+#-----------------------------------------------------------------------------
+#pack : execuet shell command CLI  
+#-----------------------------------------------------------------------------
+
+event_server_outbox="OutboxListener"
+event_server_inbox="InboxListener"
+event_shell_path_execute="service_mail_outbox"
+event_listener_execute="MailMonitoring"
+event_outbox_execute="${mail_spool_path}/index.php MailMonitoring EventOutboxListener"
+event_inbox_execute="${mail_spool_path}/index.php MailMonitoring EventInboxListener"
+event_outbox_path_execute="php -q ${event_outbox_execute}"
+event_inbox_path_execute="php -q ${event_inbox_execute}"
+event_outbox_service="${mail_spool_path}/application/batch/${event_shell_path_execute} ${event_server_outbox}"
+event_inbox_service="${mail_spool_path}/application/batch/${event_shell_path_execute} ${event_server_inbox}"
+ 
+#-----------------------------------------------------------------------------
+#cli cek life of socket here  
+#-----------------------------------------------------------------------------
+PHPEXEC=
+ALIVE=
+PARAMS=
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# ----------------------------------------------------------------------- 
+# loop process sms data 
+ 
+ EventOutboxListener()
+{
+	while :; do
+	 ${event_outbox_path_execute}
+	 sleep 5
+	done
+} 
+
+
+# ----------------------------------------------------------------------- 
+# loop process sms data 
+ 
+ EventInboxListener()
+{
+	while :; do
+	 ${event_inbox_path_execute}
+	 sleep 5
+	done
+} 
+
+# -----------------------------------------------------------------------
+
+proc_php_alive() {
+  PHPEXEC=
+  for psnum in `ps -ef | grep -v grep | grep $1 | awk '{print $2}'`; do
+        if kill -0 $psnum > /dev/null 2>&1 ; then
+            PHPEXEC=1
+        fi
+        done
+  return
+}
+
+# -----------------------------------------------------------------------
+
+proc_alive() {
+  ALIVE=
+  for psnum in `ps -ef | grep -v grep | grep $1 | awk '{print $2}'`; do
+        if kill -0 $psnum > /dev/null 2>&1 ; then
+            ALIVE=1
+        fi
+        done
+  return
+}
+
+# start argument
+start()
+{
+        ALIVE=
+        echo -n $"start Mail queue server status: "
+		proc_alive "${event_server_outbox}"
+
+        if [ $ALIVE ]; then
+          failure
+          echo
+          echo "ERROR>> Mail queue server already running, please stop it first"
+          return
+        fi
+		
+		${event_outbox_service} -t15 1> /dev/null 2> /dev/null &
+		${event_inbox_service} -t16 1> /dev/null 2> /dev/null &
+		
+        ALIVE=1
+        success
+        echo ""
+        return $ALIVE
+}
+
+# ----------- status 
+status()
+{
+        echo -n $"Mail queue Server: "
+        proc_alive "${event_server_outbox}"
+
+        if [ $ALIVE ]; then
+          echo
+          echo "STATUS >> Mail queue Server, already running,.."
+          return
+        fi
+
+        echo
+        echo "STATUS >> Mail queue Server, stop,.."
+}
+
+# stop process by kill all
+stop()
+{
+    echo -n $"stop Mail queue Server status:"
+	proc_php_alive "${event_listener_execute}"
+	
+	if [ $PHPEXEC ]; then
+		killall "${event_listener_execute}"
+	fi
+	
+	killall "${event_shell_path_execute}"
+	sleep 1
+    success
+    echo
+}
+
+
+# restarting connection check
+
+restart()
+{
+        stop
+		echo "Mail queue Server to up, Please wait ..."
+		sleep 5
+        start
+}
+
+case "$1" in
+  start)
+    start
+   ;;
+   OutboxListener)
+   EventOutboxListener &
+   ;;	
+   InboxListener)
+   EventInboxListener & 
+   ;;
+   restart)
+   restart
+   ;;
+   status)
+   status
+   ;;
+  stop)
+    stop
+   ;;
+   *)
+        echo "Input Argument : {start|stop|restart|status}"
+        exit 1
+esac
+exit $?
+
+# vi: set ts=2 sw=2 :
+

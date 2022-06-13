@@ -1,0 +1,16 @@
+1. FORM NTB 
+	- Kekurangan 
+		- Penambahan Affinity Lookup -> Biru , Emas , Platinum 
+		- Penambahan Jenis Cobrand 
+	- Flow Proses Insert to Database
+		1. Insert ke t_gn_frm_ntb jika sukses ambil result_id 
+		2. Insert Addon bersamaan dengan result_id si NTB_ID
+		3. Jika sudah sukses semua Insert ke t_gn_frm_transaction_ntb 
+2. FORM XSELL
+	- 
+
+
+3. FORM ADDON 
+	- Insert Addon data Changed ambil result_id 
+	- Insert Addon data tambahan bersamaan dengan result_id yang di kembalikan ke Front-end
+4.  
